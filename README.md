@@ -5,7 +5,7 @@
 For local development with Minikube, enable the built-in NGINX Ingress Controller:
 
 ```bash
-minikube addons enable ingress
+$ minikube addons enable ingress
 
 
 In order to run this service:
@@ -16,4 +16,4 @@ In order to run this service:
 
 3. Run the following command from the directory above the `kubernetes` directory:
 
-kubectl apply -f ./kubernetes
+$ kubectl apply -f ./kubernetes
