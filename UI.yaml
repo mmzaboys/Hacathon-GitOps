@@ -120,3 +120,12 @@ spec:
     requests:
       storage: 2Gi
   storageClassName: standard   
+
+---
+ # volumeMounts:
+ #       - mountPath: "/data"
+ #         name: ebs-volume
+ #     volumes:
+ #     - name: ebs-volume
+ #       persistentVolumeClaim:
+ #         claimName: ebs-pvc  
