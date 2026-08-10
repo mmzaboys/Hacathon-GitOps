@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-store-ui
+  labels:
+    app: retail-store-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-store-ui
+  template:
+    metadata:
+      labels:
+        app: retail-store-ui
+    spec:
+      containers:
+      - name: ui
+        image: public.ecr.aws/aws-containers/retail-store-sample-ui:1.6.1
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "150m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+        ports:
+        - containerPort: 8080
+        env:
+          - name: JAVA_OPTS
+            value: -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom
+          - name: SERVER_TOMCAT_ACCESSLOG_ENABLED
+            value: "true"
+          - name: RETAIL_UI_SEARCH_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-ui-config 
+                key:  RETAIL_UI_SEARCH_ENABLED
+          - name: RETAIL_UI_ENDPOINTS_CATALOG
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-ui-config
+                key: RETAIL_UI_ENDPOINTS_CATALOG
+          - name: RETAIL_UI_ENDPOINTS_CARTS
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-ui-config
+                key: RETAIL_UI_ENDPOINTS_CARTS
+          - name: RETAIL_UI_ENDPOINTS_CHECKOUT
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-ui-config
+                key: RETAIL_UI_ENDPOINTS_CHECKOUT
+          - name: RETAIL_UI_ENDPOINTS_ORDERS
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-ui-config
+                key: RETAIL_UI_ENDPOINTS_ORDERS
+        securityContext:
+          capabilities:
+            drop: 
+              - ALL       
+        startupProbe:
+            httpGet:
+              path: /actuator/prometheus
+              port: 8080
+            initialDelaySeconds: 45 
+            periodSeconds: 10
+            failureThreshold: 12
+        readinessProbe:           
+            httpGet:
+              path: /actuator/prometheus
+              port: 8080  
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 12
+        volumeMounts:
+          - name: ui-pvc
+            mountPath: /data
+      volumes:
+        - name: ui-pvc
+          persistentVolumeClaim:
+            claimName: retail-store-ui-pvc       
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-store-ui-service
+  labels:
+    app: retail-store-ui
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      
+  selector:
+    app: retail-store-ui
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-store-ui-config
+data:
+  RETAIL_UI_ENDPOINTS_CATALOG: http://retail-store-service-catalog:80
+  RETAIL_UI_ENDPOINTS_CARTS: http://retail-store-service-cart:80
+  RETAIL_UI_ENDPOINTS_CHECKOUT: http://checkout-service:8080
+  RETAIL_UI_ENDPOINTS_ORDERS: http://retail-store-service-orders:80
+  RETAIL_UI_SEARCH_ENABLED: "false"
+---  
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: retail-store-ui-pvc   
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: standard   

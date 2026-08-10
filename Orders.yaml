@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-store-orders
+  labels:
+    app: retail-store-orders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-store-orders
+  template:
+    metadata:
+      labels:
+        app: retail-store-orders
+    spec:
+      containers:
+      - name: orders
+        image: public.ecr.aws/aws-containers/retail-store-sample-orders:1.6.1
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        ports:
+        - containerPort: 8080
+        env:
+          - name: reschedule
+            value: "on-node-failure"
+          - name: SERVER_TOMCAT_ACCESSLOG_ENABLED
+            value: "true"
+          - name: RETAIL_ORDERS_PERSISTENCE_PROVIDER
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_PERSISTENCE_PROVIDER
+          - name: RETAIL_ORDERS_PERSISTENCE_ENDPOINT
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_PERSISTENCE_ENDPOINT    
+          - name: RETAIL_ORDERS_PERSISTENCE_NAME
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_PERSISTENCE_NAME
+          - name: RETAIL_ORDERS_PERSISTENCE_USERNAME
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_PERSISTENCE_USERNAME     
+          - name: RETAIL_ORDERS_PERSISTENCE_PASSWORD
+            valueFrom:
+               secretKeyRef:
+                  name: retail-store-secret-orders 
+                  key: RETAIL_ORDERS_PERSISTENCE_PASSWORD
+          - name: RETAIL_ORDERS_MESSAGING_PROVIDER
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_MESSAGING_PROVIDER
+          - name: RETAIL_ORDERS_MESSAGING_RABBITMQ_ADDRESSES
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_MESSAGING_RABBITMQ_ADDRESSES
+          - name: RETAIL_ORDERS_MESSAGING_RABBITMQ_USERNAME
+            valueFrom:
+               configMapKeyRef:
+                  name: retail-store-config-orders
+                  key: RETAIL_ORDERS_MESSAGING_RABBITMQ_USERNAME
+          - name: RETAIL_ORDERS_MESSAGING_RABBITMQ_PASSWORD 
+            valueFrom:
+               secretKeyRef:
+                  name: retail-store-secret-orders 
+                  key: RETAIL_ORDERS_MESSAGING_RABBITMQ_PASSWORD
+        securityContext:
+          allowPrivilegeEscalation: false          
+        readinessProbe:
+            httpGet:  
+              path: /actuator/health/     
+              port: 8080
+            initialDelaySeconds: 100
+            failureThreshold: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-store-service-orders
+spec:
+  selector:
+    app: retail-store-orders
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-store-config-orders
+data:
+  RETAIL_ORDERS_PERSISTENCE_PROVIDER: postgres  
+  RETAIL_ORDERS_PERSISTENCE_ENDPOINT: orderdb-service
+  RETAIL_ORDERS_MESSAGING_PROVIDER: rabbitmq
+  RETAIL_ORDERS_MESSAGING_RABBITMQ_ADDRESSES: rabbitmq-service
+  RETAIL_ORDERS_MESSAGING_RABBITMQ_USERNAME: rabbitmq
+  RETAIL_ORDERS_PERSISTENCE_NAME: orders
+  RETAIL_ORDERS_PERSISTENCE_USERNAME: orders_user

@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: orderdb-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: orderdb
+  serviceName: orderdb-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: orderdb
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: orderdb
+        image: postgres:16.1
+        ports:
+        - containerPort: 5432
+          name: orderdb
+        securityContext:
+          allowPrivilegeEscalation: false
+        env:
+         - name: reschedule
+           value: on-node-failure
+         - name: POSTGRES_DB
+           valueFrom:
+             configMapKeyRef:
+               name: orderdb-config
+               key: POSTGRES_DB
+         - name: POSTGRES_PASSWORD
+           valueFrom:
+             secretKeyRef:
+               name: orderdb-secret
+               key: POSTGRES_PASSWORD
+         - name: POSTGRES_USER
+           valueFrom:
+             configMapKeyRef:
+               name: orderdb-config
+               key: POSTGRES_USER
+        volumeMounts:
+          - name: orderdb-pvc
+            mountPath: /var/lib/postgresql/data
+
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -h 127.0.0.1 -p 5432 -d "$POSTGRES_DB" -U "$POSTGRES_USER"
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -h 127.0.0.1 -p 5432 -d "$POSTGRES_DB" -U "$POSTGRES_USER"
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+            cpu: 500m
+  volumeClaimTemplates:
+      - metadata: 
+          name: orderdb-pvc
+        spec: 
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: standard
+          resources:
+            requests: 
+              storage: 1Gi           
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderdb-service
+spec:
+  selector:
+    app: orderdb
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orderdb-config
+data:
+  POSTGRES_DB: orders
+  POSTGRES_USER: orders_user 

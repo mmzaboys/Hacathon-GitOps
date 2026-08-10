@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-store-deployment-checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-store-checkout
+  template:
+    metadata:
+      labels:
+        app: retail-store-checkout
+    spec:     
+      restartPolicy: Always
+      containers:
+        - name: checkout
+          image: public.ecr.aws/aws-containers/retail-store-sample-checkout:1.6.1
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent  
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+                memory: "256Mi"
+                cpu: "200m"
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          env:
+           - name: RETAIL_CHECKOUT_PERSISTENCE_PROVIDER      
+             valueFrom:
+               configMapKeyRef:
+                 name: checkout-config
+                 key: RETAIL_CHECKOUT_PERSISTENCE_PROVIDER
+           - name: RETAIL_CHECKOUT_PERSISTENCE_REDIS_URL
+             valueFrom:
+               configMapKeyRef:
+                 name: checkout-config
+                 key: RETAIL_CHECKOUT_PERSISTENCE_REDIS_URL
+           - name: RETAIL_CHECKOUT_ENDPOINTS_ORDERS
+             valueFrom:
+                configMapKeyRef:
+                  name: checkout-config
+                  key: RETAIL_CHECKOUT_ENDPOINTS_ORDERS
+         
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 45 
+            periodSeconds: 5
+            failureThreshold: 5
+          readinessProbe:           
+            httpGet:
+              path: /health
+              port: 8080  
+            initialDelaySeconds: 45
+            periodSeconds: 5
+            failureThreshold: 5
+
+          securityContext:
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            allowPrivilegeEscalation: false              
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory        
+
+           
+        
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-service
+spec:
+  selector:
+    app: retail-store-checkout
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-config
+data:
+  RETAIL_CHECKOUT_PERSISTENCE_PROVIDER: redis
+  RETAIL_CHECKOUT_PERSISTENCE_REDIS_URL: checkout-service-redis:6379
+  RETAIL_CHECKOUT_ENDPOINTS_ORDERS: http://retail-store-service-orders:80
