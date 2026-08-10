@@ -1,3 +1,13 @@
+## Installing NGINX Ingress
+
+### Minikube
+
+For local development with Minikube, enable the built-in NGINX Ingress Controller:
+
+```bash
+minikube addons enable ingress
+
+
 In order to run this service:
 
 1. Remove `sealed-secret.yaml`.
