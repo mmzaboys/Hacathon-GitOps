@@ -1,4 +1,9 @@
-In order to Make this service running You will remove sealed-secret.yaml
-add the secrets.yaml Sent privately among these files
-run this command in a directory above the directory where the *.yaml files exist
-kubectl apply -f /kubernetes
+In order to run this service:
+
+1. Remove `sealed-secret.yaml`.
+
+2. Add the `secrets.yaml` file that was sent to you privately.
+
+3. Run the following command from the directory above the `kubernetes` directory:
+
+kubectl apply -f ./kubernetes
