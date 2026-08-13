@@ -77,7 +77,7 @@ spec:
         name: dynamodb-pvc
        spec:
         accessModes: [ "ReadWriteOnce" ]
-        storageClassName: standard
+        storageClassName: ebs-sc
         resources:
           requests:
             storage: 1Gi      
@@ -95,7 +95,4 @@ spec:
       name: dynamodb
       port: 8000
       targetPort: 8000
-  clusterIP: None  
- 
-  
-        
+  clusterIP: None

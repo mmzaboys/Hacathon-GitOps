@@ -36,7 +36,7 @@ spec:
             valueFrom:
               configMapKeyRef:
                 name: retail-store-ui-config 
-                key:  RETAIL_UI_SEARCH_ENABLED
+                key: RETAIL_UI_SEARCH_ENABLED
           - name: RETAIL_UI_ENDPOINTS_CATALOG
             valueFrom:
               configMapKeyRef:
@@ -63,25 +63,27 @@ spec:
               - ALL       
         startupProbe:
             httpGet:
-              path: /actuator/prometheus
+              path: /actuator/health
               port: 8080
-            initialDelaySeconds: 45 
+            initialDelaySeconds: 60
             periodSeconds: 10
-            failureThreshold: 12
+            timeoutSeconds: 5
+            failureThreshold: 30
         readinessProbe:           
             httpGet:
-              path: /actuator/prometheus
+              path: /actuator/health
               port: 8080  
-            initialDelaySeconds: 45
+            initialDelaySeconds: 60
             periodSeconds: 10
-            failureThreshold: 12
+            timeoutSeconds: 5
+            failureThreshold: 30
         volumeMounts:
-          - name: ui-pvc
+          - name: ui-storage
             mountPath: /data
       volumes:
-        - name: ui-pvc
+        - name: ui-storage
           persistentVolumeClaim:
-            claimName: retail-store-ui-pvc       
+            claimName: retail-store-ui-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -94,7 +96,6 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      
   selector:
     app: retail-store-ui
 ---
@@ -119,13 +120,4 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: standard   
-
----
- # volumeMounts:
- #       - mountPath: "/data"
- #         name: ebs-volume
- #     volumes:
- #     - name: ebs-volume
- #       persistentVolumeClaim:
- #         claimName: ebs-pvc  
+  storageClassName: ebs-sc

@@ -40,17 +40,18 @@ spec:
             httpGet:
               path: /_cluster/health
               port: 9200
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
         readinessProbe:           
             httpGet:
               path: /_cluster/health
               port: 9200  
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
-
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
         volumeMounts:
           - name: opensearch-data
             mountPath: /usr/share/opensearch/data
@@ -88,5 +89,5 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: standard  
+  storageClassName: ebs-sc
 
