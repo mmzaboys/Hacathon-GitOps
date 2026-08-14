@@ -86,3 +86,23 @@ spec:
           resources:
             requests: 
               storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orderdb-config
+data:
+  POSTGRES_DB: orders
+  POSTGRES_USER: orders_user 
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderdb-service
+spec:
+  selector:
+    app: orderdb
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432                

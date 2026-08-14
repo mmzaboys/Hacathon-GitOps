@@ -1,89 +1,87 @@
-  apiVersion: apps/v1  
-  kind: Deployment
-  metadata:
-    name: retail-store-cart
-  spec:
-    replicas: 1
-    selector:
-      matchLabels:
+apiVersion: apps/v1  
+kind: Deployment
+metadata:
+  name: retail-store-cart
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-store-cart
+  template:
+    metadata:
+      labels:
         app: retail-store-cart
-    template:
-      metadata:
-        labels:
-          app: retail-store-cart
-      spec:
-        containers:
-        - name: cart
-          image: public.ecr.aws/aws-containers/retail-store-sample-cart:1.6.1
-          imagePullPolicy: IfNotPresent
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "150m"
-            limits:
-              memory: "256Mi"
-              cpu: "300m"
-          startupProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 30
-          readinessProbe:           
-            httpGet:
-              path: /actuator/health
-              port: 8080  
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 30
-          securityContext:
-           capabilities:
+    spec:
+      containers:
+      - name: cart
+        image: public.ecr.aws/aws-containers/retail-store-sample-cart:1.6.1
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        readinessProbe:           
+          httpGet:
+            path: /actuator/health
+            port: 8080  
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        securityContext:
+          capabilities:
             add:
               - NET_BIND_SERVICE
             drop:
               - ALL
-           readOnlyRootFilesystem: true 
-           allowPrivilegeEscalation: false 
-          ports:
-          - containerPort: 8080
-          env:
-            - name: SERVER_TOMCAT_ACCESSLOG_ENABLED
-              value: "true"
-            - name: RETAIL_CART_PERSISTENCE_PROVIDER
-              valueFrom:
-                configMapKeyRef:
-                  name: retail-store-config
-                  key: RETAIL_CART_PERSISTENCE_PROVIDER
-            - name: RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: retail-store-config
-                  key: RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT
-            - name: RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE
-              value: "true"      
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: retail-store-secret
-                  key: AWS_ACCESS_KEY_ID
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: retail-store-secret
-                  key: AWS_SECRET_ACCESS_KEY
-          volumeMounts:
-            - name: tmp-volume
-              mountPath: /tmp
-        volumes:
-         - name: tmp-volume
-           emptyDir:
-            medium: Memory        
-                  
-          
-          
+          readOnlyRootFilesystem: false  # Set to false temporarily to isolate JVM locking
+          allowPrivilegeEscalation: false 
+        ports:
+        - containerPort: 8080
+        env:
+          - name: SERVER_TOMCAT_ACCESSLOG_ENABLED
+            value: "true"
+          - name: RETAIL_CART_PERSISTENCE_PROVIDER
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-config
+                key: RETAIL_CART_PERSISTENCE_PROVIDER
+          - name: RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: retail-store-config
+                key: RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT
+          - name: RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE
+            value: "true"      
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: retail-store-secret
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: retail-store-secret
+                key: AWS_SECRET_ACCESS_KEY
+          - name: AWS_REGION
+            value: "eu-north-1"
+        volumeMounts:
+          - name: tmp-volume
+            mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -97,6 +95,7 @@ spec:
       port: 80
       targetPort: 8080
   type: ClusterIP    
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -105,8 +104,3 @@ metadata:
 data:
   RETAIL_CART_PERSISTENCE_PROVIDER: "dynamodb"
   RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT: http://dynamodb-service:8000
-
-
-
-
-  

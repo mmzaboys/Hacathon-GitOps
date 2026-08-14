@@ -8,80 +8,99 @@ spec:
       app: dynamodb
   serviceName: dynamodb-service
   replicas: 1
+
   template:
     metadata:
       labels:
         app: dynamodb
+
     spec:
       restartPolicy: Always
+
+      # ✅ Pod Security Context
+      securityContext:
+        fsGroup: 1000
+
       containers:
-      - name: dynamodb
-        image: amazon/dynamodb-local:1.20.0
-        ports:
-        - containerPort: 8000
-          name: dynamodb
-        securityContext:  
-          readOnlyRootFilesystem: true  
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: 
-              - ALL
-            add: 
-              - CHOWN
-              - SETGID
-              - SETUID
-        args:
-          - -jar
-          - DynamoDBLocal.jar  
-          - -sharedDb   
-          - -dbPath
-          - /home/dynamodblocal/data
-        volumeMounts:
-          - name: dynamodb-pvc
-            mountPath: /home/dynamodblocal/data
-          - name: tmp-volume
-            mountPath: /tmp  
-        resources:
-          requests:
-            memory: 128Mi
-            cpu: 100m
-          limits:
-            memory: 256Mi
-            cpu: 200m  
-        startupProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6
-        livenessProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6
-        readinessProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6    
+        - name: dynamodb
+          image: amazon/dynamodb-local:1.20.0
+
+          ports:
+            - containerPort: 8000
+              name: dynamodb
+
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+                - SETGID
+                - SETUID
+
+          args:
+            - -jar
+            - DynamoDBLocal.jar
+            - -sharedDb
+            - -dbPath
+            - /home/dynamodblocal/data
+
+          volumeMounts:
+            - name: dynamodb-pvc
+              mountPath: /home/dynamodblocal/data
+
+            - name: tmp-volume
+              mountPath: /tmp
+
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 256Mi
+              cpu: 200m
+
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+
       volumes:
-         - name: tmp-volume
-           emptyDir: {}      
+        - name: tmp-volume
+          emptyDir: {}
+
   volumeClaimTemplates:
-     - metadata:
+    - metadata:
         name: dynamodb-pvc
-       spec:
-        accessModes: [ "ReadWriteOnce" ]
+      spec:
+        accessModes:
+          - ReadWriteOnce
         storageClassName: ebs-sc
         resources:
           requests:
-            storage: 1Gi      
-     
+            storage: 1Gi
+
 ---
 apiVersion: v1
 kind: Service

@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rabbitmq
-  labels:
-    app: rabbitmq
 spec:
   serviceName: rabbitmq-service
   replicas: 1
@@ -17,16 +15,32 @@ spec:
     spec:
       securityContext:
         fsGroup: 999
+        runAsUser: 999
+      initContainers:
+      - name: fix-cookie-permissions
+        image: busybox:1.36
+        securityContext:
+          runAsUser: 0
+        command:
+        - sh
+        - -c
+        - |
+          chown -R 999:999 /var/lib/rabbitmq
+          if [ -f /var/lib/rabbitmq/.erlang.cookie ]; then
+            chmod 600 /var/lib/rabbitmq/.erlang.cookie
+          fi
+        volumeMounts:
+        - name: rabbitmq-data
+          mountPath: /var/lib/rabbitmq
       containers:
       - name: rabbitmq
         image: rabbitmq:3-management
-        imagePullPolicy: IfNotPresent
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "150m"
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "2Gi"
+            memory: "1Gi"
             cpu: "300m"
         ports:
         - containerPort: 5672
@@ -47,24 +61,15 @@ spec:
         volumeMounts:
          - name: rabbitmq-data
            mountPath: /var/lib/rabbitmq
-        startupProbe:
-          tcpSocket:
-            port: 5672
-          initialDelaySeconds: 40
-          periodSeconds: 10
-          timeoutSeconds: 10
-          failureThreshold: 20 
-        securityContext:
-          allowPrivilegeEscalation: false       
   volumeClaimTemplates:
-  - metadata:
-      name: rabbitmq-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]  
-      storageClassName: "ebs-sc"
-      resources:
-        requests:
-          storage: 1Gi     
+      - metadata:
+          name: rabbitmq-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]  
+          storageClassName: "ebs-sc"
+          resources:
+            requests:
+              storage: 1Gi 
 ---
 apiVersion: v1
 kind: Service
@@ -88,11 +93,3 @@ metadata:
   name: rabbitmq-config 
 data:
   RABBITMQ_DEFAULT_USER: rabbitmq
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: rabbitmq-secret
-type: Opaque
-data:
-  RABBITMQ_DEFAULT_PASS: cGFzc3dvcmQ= # base64 encoded "password"
