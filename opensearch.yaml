@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: opensearch-deployment
 spec:
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: opensearch
@@ -12,6 +15,8 @@ spec:
         app: opensearch
     spec:   
       restartPolicy: Always
+      securityContext:
+        fsGroup: 1000
       containers:
       - name: opensearch
         image: opensearchproject/opensearch:3.5.0
@@ -37,28 +42,26 @@ spec:
         - name: http  
           containerPort: 9200
         startupProbe:
-            httpGet:
-              path: /_cluster/health
-              port: 9200
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
         readinessProbe:           
-            httpGet:
-              path: /_cluster/health
-              port: 9200  
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
-
+          httpGet:
+            path: /_cluster/health
+            port: 9200  
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
         volumeMounts:
           - name: opensearch-data
             mountPath: /usr/share/opensearch/data
       volumes:
-          - name: opensearch-data
-            persistentVolumeClaim:
-               claimName: opensearch-data
-             
+        - name: opensearch-data
+          persistentVolumeClaim:
+            claimName: opensearch-data
 --- 
 apiVersion: v1
 kind: Service
@@ -88,5 +91,4 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: standard  
-
+  storageClassName: standard
