@@ -15,6 +15,16 @@ spec:
       labels:
         app: rabbitmq
     spec:
+      initContainers:
+        - name: enable-prometheus-plugin
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo "[rabbitmq_prometheus,rabbitmq_management]." > /etc/rabbitmq-plugins/enabled_plugins
+          volumeMounts:
+            - name: plugins-config
+              mountPath: /etc/rabbitmq-plugins
       containers:
       - name: rabbitmq
         image: rabbitmq:3-management
@@ -31,6 +41,8 @@ spec:
           name: amqp
         - containerPort: 15672
           name: management
+        - containerPort: 15692
+          name: metrics
         env:
          - name: RABBITMQ_DEFAULT_USER
            valueFrom:
@@ -45,6 +57,9 @@ spec:
         volumeMounts:
          - name: rabbitmq-data
            mountPath: /var/lib/rabbitmq
+         - name: plugins-config
+           mountPath: /etc/rabbitmq/enabled_plugins
+           subPath: enabled_plugins
         startupProbe:
           tcpSocket:
             port: 5672
@@ -53,7 +68,10 @@ spec:
           timeoutSeconds: 10
           failureThreshold: 20 
         securityContext:
-            allowPrivilegeEscalation: false       
+          allowPrivilegeEscalation: false
+      volumes:
+        - name: plugins-config
+          emptyDir: {}
   volumeClaimTemplates:
       - metadata:
           name: rabbitmq-data
@@ -68,6 +86,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rabbitmq-service
+  labels:
+    app: rabbitmq
 spec:
   selector:
     app: rabbitmq
@@ -76,11 +96,12 @@ spec:
   - name: amqp
     port: 5672
     targetPort: 5672
-
   - name: management
     port: 15672
     targetPort: 15672
-
+  - name: metrics
+    port: 15692
+    targetPort: 15692
 --- 
 apiVersion: v1
 kind: ConfigMap

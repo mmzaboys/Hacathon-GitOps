@@ -1,0 +1,139 @@
+# catalogdb-servicemonitor (Catalog_mariadb.yaml) and dynamodb-servicemonitor (ServiceMonitor.yaml)
+# already exist — not duplicated here.
+#
+# ASSUMPTION: retail-store-cart / catalog / orders / ui are the AWS
+# "retail-store-sample" apps (image tags confirm this). Their Java services (cart,
+# orders, ui) expose Micrometer metrics at /actuator/prometheus when the
+# `management.endpoints.web.exposure.include` property includes "prometheus" — verify
+# with `kubectl port-forward` + curl (exec has no shell tools in these images).
+# If it 404s, add env var MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,prometheus
+# to that Deployment. Catalog (Go) is assumed to expose /metrics the same way.
+# CONFIRMED: checkout is actually Node.js (prom-client), not Java — its 404 on
+# /actuator gave it away. It exposes plain /metrics, already reflected below.
+# Apply service-port-name-patches.yaml BEFORE this file — these ServiceMonitors
+# reference the `http`/`metrics` port names added there.
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cart-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: retail-store-cart
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: catalog-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: retail-store-catalog
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: checkout-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: retail-store-checkout
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: checkout-redis-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: checkout-redis
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orders-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: retail-store-orders
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orderdb-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: orderdb
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rabbitmq-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: rabbitmq
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ui-servicemonitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: retail-store-ui
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+
+# opensearch-deployment is intentionally NOT covered here: stock OpenSearch has no
+# built-in Prometheus endpoint. To scrape it you'd need the opensearch-project
+# "prometheus-exporter" plugin installed in the image, exposing /_prometheus/metrics
+# on port 9200 — happy to wire that up if you add the plugin.

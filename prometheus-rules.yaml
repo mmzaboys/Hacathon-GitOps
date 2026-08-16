@@ -1,0 +1,184 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: retail-store-alert-rules
+  labels:
+    release: prometheus
+spec:
+  groups:
+
+    # ---------------------------------------------------------------
+    # Generic scrape / pod health — applies to every target above
+    # ---------------------------------------------------------------
+    - name: retail-store.targets
+      rules:
+        - alert: TargetDown
+          expr: up{job=~".*(cart|catalog|checkout|orders|ui|orderdb|catalogdb|rabbitmq|dynamodb).*"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Scrape target {{ $labels.job }} is down"
+            description: "Prometheus has not been able to scrape {{ $labels.job }} ({{ $labels.instance }}) for 5 minutes."
+
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace="default"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted more than 3 times in the last 15 minutes."
+
+        - alert: PodNotReady
+          expr: sum by (namespace, pod) (kube_pod_status_phase{namespace="default", phase=~"Pending|Unknown|Failed"}) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} not ready"
+            description: "Pod {{ $labels.pod }} has been in phase {{ $labels.phase }} for more than 10 minutes."
+
+    # ---------------------------------------------------------------
+    # Resource pressure
+    # ---------------------------------------------------------------
+    - name: retail-store.resources
+      rules:
+        - alert: ContainerHighMemoryUsage
+          expr: |
+            (container_memory_working_set_bytes{namespace="default", container!=""}
+              / on(namespace, pod, container)
+             kube_pod_container_resource_limits{namespace="default", resource="memory"}) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.container }} in {{ $labels.pod }} near memory limit"
+            description: "Container is using more than 90% of its memory limit for 10 minutes and risks OOMKill."
+
+        - alert: ContainerHighCPUUsage
+          expr: |
+            (sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{namespace="default", container!=""}[5m]))
+              / on(namespace, pod, container)
+             kube_pod_container_resource_limits{namespace="default", resource="cpu"}) > 0.9
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.container }} in {{ $labels.pod }} near CPU limit"
+            description: "Container CPU usage has exceeded 90% of its limit for 15 minutes."
+
+        - alert: PersistentVolumeAlmostFull
+          expr: kubelet_volume_stats_available_bytes{namespace="default"} / kubelet_volume_stats_capacity_bytes{namespace="default"} < 0.1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} almost full"
+            description: "Less than 10% free space remains on {{ $labels.persistentvolumeclaim }}."
+
+    # ---------------------------------------------------------------
+    # MariaDB (catalogdb)
+    # ---------------------------------------------------------------
+    - name: retail-store.catalogdb
+      rules:
+        - alert: MariaDBDown
+          expr: mysql_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "catalogdb (MariaDB) is unreachable"
+            description: "mysqld_exporter cannot reach the catalogdb instance for 2 minutes."
+
+        - alert: MariaDBTooManyConnections
+          expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "catalogdb connection usage high"
+            description: "More than 80% of max_connections are in use on catalogdb."
+
+    # ---------------------------------------------------------------
+    # Postgres (orderdb)
+    # ---------------------------------------------------------------
+    - name: retail-store.orderdb
+      rules:
+        - alert: PostgresDown
+          expr: pg_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "orderdb (Postgres) is unreachable"
+            description: "postgres_exporter cannot reach the orderdb instance for 2 minutes."
+
+        - alert: PostgresTooManyConnections
+          expr: sum(pg_stat_activity_count) by (instance) / on(instance) pg_settings_max_connections > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "orderdb connection usage high"
+            description: "More than 80% of max_connections are in use on orderdb."
+
+    # ---------------------------------------------------------------
+    # RabbitMQ
+    # ---------------------------------------------------------------
+    - name: retail-store.rabbitmq
+      rules:
+        - alert: RabbitMQDown
+          expr: rabbitmq_up == 0 or absent(rabbitmq_identity_info)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "RabbitMQ is unreachable"
+            description: "The rabbitmq_prometheus plugin has not reported for 2 minutes."
+
+        - alert: RabbitMQQueueBacklogGrowing
+          expr: sum(rabbitmq_queue_messages_ready) by (queue) > 1000
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Queue {{ $labels.queue }} backlog growing"
+            description: "More than 1000 ready messages queued for 10 minutes — consumers may be stuck or under-provisioned."
+
+    # ---------------------------------------------------------------
+    # Redis (checkout session store)
+    # ---------------------------------------------------------------
+    - name: retail-store.checkout-redis
+      rules:
+        - alert: RedisDown
+          expr: redis_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "checkout-redis is unreachable"
+            description: "redis_exporter cannot reach checkout-redis for 2 minutes."
+
+        - alert: RedisHighMemoryUsage
+          expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "checkout-redis near maxmemory"
+            description: "Redis is using more than 90% of configured maxmemory."
+
+    # ---------------------------------------------------------------
+    # DynamoDB Local (cart persistence)
+    # ---------------------------------------------------------------
+    - name: retail-store.dynamodb
+      rules:
+        - alert: DynamoDBLocalDown
+          expr: up{job=~".*dynamodb.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "dynamodb-local is unreachable"
+            description: "The JMX exporter on dynamodb-statefulset has not reported for 2 minutes — cart writes will start failing."

@@ -1,3 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dynamodb-jmx-config
+data:
+  config.yaml: |
+    rules:
+      - pattern: ".*"
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -14,79 +23,101 @@ spec:
         app: dynamodb
     spec:
       restartPolicy: Always
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: fetch-jmx-exporter
+          image: busybox:1.36
+          command:
+            - wget
+            - -O
+            - /jmx/jmx_prometheus_javaagent.jar
+            - https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
+          volumeMounts:
+            - name: jmx-agent
+              mountPath: /jmx
       containers:
-      - name: dynamodb
-        image: amazon/dynamodb-local:1.20.0
-        ports:
-        - containerPort: 8000
-          name: dynamodb
-        securityContext:  
-          readOnlyRootFilesystem: true  
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: 
-              - ALL
-            add: 
-              - CHOWN
-              - SETGID
-              - SETUID
-        args:
-          - -jar
-          - DynamoDBLocal.jar  
-          - -sharedDb   
-          - -dbPath
-          - /home/dynamodblocal/data
-        volumeMounts:
-          - name: dynamodb-pvc
-            mountPath: /home/dynamodblocal/data
-          - name: tmp-volume
-            mountPath: /tmp  
-        resources:
-          requests:
-            memory: 128Mi
-            cpu: 100m
-          limits:
-            memory: 256Mi
-            cpu: 200m  
-        startupProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6
-        livenessProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6
-        readinessProbe:
-          tcpSocket:
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 6    
+        - name: dynamodb
+          image: amazon/dynamodb-local:1.20.0
+          ports:
+            - containerPort: 8000
+              name: dynamodb
+            - containerPort: 9102
+              name: metrics
+          securityContext:  
+            readOnlyRootFilesystem: true  
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: 
+                - ALL
+          args:
+            - -Xms128m
+            - -Xmx256m
+            - -javaagent:/jmx/jmx_prometheus_javaagent.jar=9102:/etc/jmx/config.yaml
+            - -jar
+            - DynamoDBLocal.jar  
+            - -sharedDb   
+            - -dbPath
+            - /home/dynamodblocal/data
+          volumeMounts:
+            - name: dynamodb-pvc
+              mountPath: /home/dynamodblocal/data
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: jmx-agent
+              mountPath: /jmx
+            - name: jmx-config
+              mountPath: /etc/jmx
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m  
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 15
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
-         - name: tmp-volume
-           emptyDir: {}      
+        - name: tmp-volume
+          emptyDir: {}
+        - name: jmx-agent
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: dynamodb-jmx-config
   volumeClaimTemplates:
-     - metadata:
+    - metadata:
         name: dynamodb-pvc
-       spec:
+      spec:
         accessModes: [ "ReadWriteOnce" ]
         storageClassName: standard
         resources:
           requests:
-            storage: 1Gi      
-     
+            storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: dynamodb-service
+  labels:
+    app: dynamodb
 spec:
   selector:
     app: dynamodb
@@ -95,7 +126,8 @@ spec:
       name: dynamodb
       port: 8000
       targetPort: 8000
-  clusterIP: None  
- 
-  
-        
+    - protocol: TCP
+      name: metrics
+      port: 9102
+      targetPort: 9102
+  clusterIP: None
