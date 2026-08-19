@@ -8,7 +8,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mmzaboys/Hacathon-GitOps.git
-    targetRevision: main
+    targetRevision: Mahmoud/EKS-adjustments
     path: argocd/apps          # folder containing the child Application manifests
     directory:
       recurse: false

@@ -1,13 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: nginx-ingress
-  namespace: default
+  name: retail-store-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
 spec:
-  ingressClassName: nginx
+  ingressClassName: alb
+
   rules:
-    - host: "demo-store"
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix
@@ -16,4 +19,3 @@ spec:
                 name: retail-store-ui-service
                 port:
                   number: 8080
-                    

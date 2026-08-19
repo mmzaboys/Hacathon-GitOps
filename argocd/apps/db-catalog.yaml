@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mmzaboys/Hacathon-GitOps.git
-    targetRevision: main
+    targetRevision: Mahmoud/EKS-adjustments
     path: data/catalog-db     # its own subfolder, just Catalog_mariadb.yaml
   destination:
     server: https://kubernetes.default.svc

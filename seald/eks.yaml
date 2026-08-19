@@ -1,0 +1,22 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: retail-store-test
+  region: us-east-1
+
+managedNodeGroups:
+  - name: retail-workers
+    instanceType: t3.medium
+    minSize: 1
+    desiredCapacity: 3   # 👈 Increased from 1 to 3
+    maxSize: 3           # 👈 Increased from 1 to 3
+
+    privateNetworking: true
+
+    volumeSize: 30
+    volumeType: gp3
+
+    iam:
+      withAddonPolicies:
+        autoScaler: true

@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mmzaboys/Hacathon-GitOps.git
-    targetRevision: main
+    targetRevision: Mahmoud/EKS-adjustments
     path: data/orders-db     # its own subfolder, just ordersDB_sts.yaml & rabbitmq_sts.yaml
   destination:
     server: https://kubernetes.default.svc

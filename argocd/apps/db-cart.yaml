@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mmzaboys/Hacathon-GitOps.git
-    targetRevision: main
+    targetRevision: Mahmoud/EKS-adjustments
     path: data/cart-db     # its own subfolder, just CartDB.yaml
   destination:
     server: https://kubernetes.default.svc

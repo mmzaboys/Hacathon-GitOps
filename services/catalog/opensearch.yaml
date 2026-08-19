@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: opensearch-deployment
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: opensearch
@@ -10,54 +11,68 @@ spec:
     metadata:
       labels:
         app: opensearch
-    spec:   
-      restartPolicy: Always
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: fix-volume-permissions
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - chown -R 1000:1000 /usr/share/opensearch/data
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: opensearch-data
+          mountPath: /usr/share/opensearch/data
       containers:
       - name: opensearch
         image: opensearchproject/opensearch:3.5.0
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "300m"
+            cpu: 300m
+            memory: 1Gi
           limits:
-            memory: "1Gi"
-            cpu: "600m"
-        env:
-        - name: discovery.type
-          value: single-node
-        - name: OPENSEARCH_JAVA_OPTS
-          value: "-Xms512m -Xmx512m"
-        - name: plugins.security.disabled
-          value: "true"
-        - name: DISABLE_INSTALL_DEMO_CONFIG
-          value: "true"         
+            cpu: 600m
+            memory: 1Gi
         ports:
-        - name: performance
-          containerPort: 9600
-        - name: http  
-          containerPort: 9200
+        - containerPort: 9200
+          name: http
+        - containerPort: 9600
+          name: performance
+        env:
+          - name: discovery.type
+            value: single-node
+          - name: OPENSEARCH_JAVA_OPTS
+            value: "-Xms512m -Xmx512m"
+          - name: plugins.security.disabled
+            value: "true"
+          - name: DISABLE_INSTALL_DEMO_CONFIG
+            value: "true"
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
         startupProbe:
-            httpGet:
-              path: /_cluster/health
-              port: 9200
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
-        readinessProbe:           
-            httpGet:
-              path: /_cluster/health
-              port: 9200  
-            initialDelaySeconds: 100
-            periodSeconds: 5
-            failureThreshold: 12
-
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
         volumeMounts:
-          - name: opensearch-data
-            mountPath: /usr/share/opensearch/data
+        - name: opensearch-data
+          mountPath: /usr/share/opensearch/data
       volumes:
-          - name: opensearch-data
-            persistentVolumeClaim:
-               claimName: opensearch-data
+      - name: opensearch-data
+        persistentVolumeClaim:
+          claimName: opensearch-data
              
 --- 
 apiVersion: v1
@@ -88,5 +103,4 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: standard  
-
+  storageClassName: ebs-sc

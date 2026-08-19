@@ -107,4 +107,3 @@ data:
   RETAIL_CATALOG_SEARCH_OS_ENDPOINT: opensearch-service
   RETAIL_CATALOG_SEARCH_ENABLED: "false"
 
-
