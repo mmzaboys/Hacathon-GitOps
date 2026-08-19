@@ -1,0 +1,21 @@
+# app-of-apps.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retail-store-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mmzaboys/Hacathon-GitOps.git
+    targetRevision: Mahmoud/EKS-adjustments
+    path: argocd/apps          # folder containing the child Application manifests
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
