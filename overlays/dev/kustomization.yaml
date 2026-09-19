@@ -27,4 +27,3 @@ patches:
       spec:
         serviceName: catalogdb-service
         replicas: 1
-cl
