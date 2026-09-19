@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/mmzaboys/Hacathon-GitOps.git'
-    path: base/overlays/dev
+    path: overlays/dev
     targetRevision: mahmoud/gitops
   destination:
     server: 'https://kubernetes.default.svc'
