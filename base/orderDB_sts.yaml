@@ -159,3 +159,18 @@ metadata:
 data:
   POSTGRES_DB: orders
   POSTGRES_USER: orders_user
+
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: orderdb-secret
+  namespace: default
+spec:
+  encryptedData:
+    POSTGRES_PASSWORD: AgBB1IaBNJXmgJZtEmTgfbmRxPqFWxRNLnoHWwe3+mO7bd5WN6NTc+0iWtpbwkYpexu8x4iEnFPNLK9cZm3SkCSmPqp4tF3zJVuFbXETnvvy+ftRmwnSCmrkFUDcd9/NQtRaLdKhv5qyYs4je4/+Gom8DGHC3Nous2/zU3M6/FuQ0QOIqLBFq/i0FOHeUl5SO6sFCaPcA0sX41RL99i1XYuGMg6AF3HsGMKQcdLradYmw6FqAmqqwSVzvkuMNjKWsbcLn1dwfVQw11qlia03QXFGtMaFqueFTittadPkLu+VmNyYyTk51six/I/u3F+gTXx8I39vowZ9oG6RZa7iK1SVkCoAQ3rl7V3ZYk61hyJrK99+UzfYQTwccEmHGF9G20SGAJmsx/fMj4TnatuPxOgr+NrJsm0YXripD0HLG0Kcjuf4HfXhuvhsn46aZuO9prMcP0lT7wgN7ZkEmGsJ5OtWlLfNLyuSFkpE85DP3WgSvL36g9V4PPyy0tfeFr+mhQaQ8Tn8CwroL7/Qh1o/SpBBAbmUJcivc0XNJvoi2OOZD2JlBbosS3VVSmmkM6+SgGquNjjCh2OZIicfA2bvt/mL4nH8uN3ckkeASYTOYnruP51q5xTp2ZPOJKyOtFAPilSqOp67pMbCqyVAf79SKDtcqKmq7ypTOI3NG0gS69MleIBSz6Umt2TmS75iphizZtODEFi1T+E1CZ7VqXwkEzthVeNx
+  template:
+    metadata:
+      name: orderdb-secret
+      namespace: default
+    type: Opaque

@@ -147,13 +147,20 @@ spec:
 
   volumeClaimTemplates:
     - metadata:
+        name: exporter-cnf
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 1Mi
+    - metadata:
         name: catalogdb-storage
       spec:
         accessModes:
           - ReadWriteOnce
-
         storageClassName: standard
-
         resources:
           requests:
             storage: 512Mi
