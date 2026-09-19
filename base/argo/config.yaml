@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retail-store-ui
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/mmzaboys/Hacathon-GitOps.git'
+    path: base/overlays/dev
+    targetRevision: mahmoud/gitops
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true    
