@@ -16,3 +16,15 @@ patches:
           app: retail-store-ui
       spec:
         replicas: 4
+  - target:
+      kind: StatefulSet
+      name: catalogdb-statefulset
+    patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: catalogdb-statefulset
+      spec:
+        serviceName: catalogdb-service
+        replicas: 1
+cl

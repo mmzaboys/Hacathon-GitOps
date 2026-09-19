@@ -3,3 +3,4 @@ kind: Kustomization
 namespace: default
 resources:
   - UI.yaml
+  - Catalog_mariadb.yaml
